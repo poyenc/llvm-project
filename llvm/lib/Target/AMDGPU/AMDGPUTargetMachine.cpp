@@ -295,7 +295,7 @@ static ScheduleDAGInstrs *
 createGCNMaxOccupancyMachineScheduler(MachineSchedContext *C) {
   ScheduleDAGMILive *DAG =
     new GCNScheduleDAGMILive(C, std::make_unique<GCNMaxOccupancySchedStrategy>(C));
-  DAG->addMutation(createLoadClusterDAGMutation(DAG->TII, DAG->TRI));
+  // DAG->addMutation(createLoadClusterDAGMutation(DAG->TII, DAG->TRI));
   DAG->addMutation(createAMDGPUMacroFusionDAGMutation());
   DAG->addMutation(createAMDGPUExportClusteringDAGMutation());
   return DAG;
@@ -305,7 +305,7 @@ static ScheduleDAGInstrs *
 createIterativeGCNMaxOccupancyMachineScheduler(MachineSchedContext *C) {
   auto DAG = new GCNIterativeScheduler(C,
     GCNIterativeScheduler::SCHEDULE_LEGACYMAXOCCUPANCY);
-  DAG->addMutation(createLoadClusterDAGMutation(DAG->TII, DAG->TRI));
+  // DAG->addMutation(createLoadClusterDAGMutation(DAG->TII, DAG->TRI));
   return DAG;
 }
 
@@ -318,7 +318,7 @@ static ScheduleDAGInstrs *
 createIterativeILPMachineScheduler(MachineSchedContext *C) {
   auto DAG = new GCNIterativeScheduler(C,
     GCNIterativeScheduler::SCHEDULE_ILP);
-  DAG->addMutation(createLoadClusterDAGMutation(DAG->TII, DAG->TRI));
+  // DAG->addMutation(createLoadClusterDAGMutation(DAG->TII, DAG->TRI));
   DAG->addMutation(createAMDGPUMacroFusionDAGMutation());
   return DAG;
 }
@@ -764,7 +764,7 @@ public:
   ScheduleDAGInstrs *
   createMachineScheduler(MachineSchedContext *C) const override {
     ScheduleDAGMILive *DAG = createGenericSchedLive(C);
-    DAG->addMutation(createLoadClusterDAGMutation(DAG->TII, DAG->TRI));
+    // DAG->addMutation(createLoadClusterDAGMutation(DAG->TII, DAG->TRI));
     return DAG;
   }
 
