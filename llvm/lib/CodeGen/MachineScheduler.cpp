@@ -3167,6 +3167,28 @@ void GenericScheduler::initCandidate(SchedCandidate &Cand, SUnit *SU,
              << Cand.RPDelta.Excess.getUnitInc() << "\n");
 }
 
+namespace {
+inline float getForwardScheduleRankImpl(SUnit& succ)
+{
+  unsigned scheduled = 0;
+  for (SDep &dep : succ.Preds) {
+    if (dep.getSUnit()->isScheduled) {
+      ++scheduled;
+    }
+  }
+  return scheduled / static_cast<float>(succ.Preds.size());
+}
+
+inline float getForwardScheduleRank(SUnit& su)
+{
+  float rank = 0.f;
+  for (SDep &dep : su.Succs) {
+    rank += getForwardScheduleRankImpl(*dep.getSUnit());
+  }
+  return rank;
+}
+} // anonymous namespace
+
 /// Apply a set of heuristics to a new candidate. Heuristics are currently
 /// hierarchical. This may be more efficient than a graduated cost model because
 /// we don't need to evaluate all aspects of the model for each node in the
@@ -3198,12 +3220,12 @@ void GenericScheduler::tryCandidate(SchedCandidate &Cand,
                                                DAG->MF))
     return;
 
-  // Avoid increasing the max critical pressure in the scheduled region.
-  if (DAG->isTrackingPressure() && tryPressure(TryCand.RPDelta.CriticalMax,
-                                               Cand.RPDelta.CriticalMax,
-                                               TryCand, Cand, RegCritical, TRI,
-                                               DAG->MF))
-    return;
+  // // Avoid increasing the max critical pressure in the scheduled region.
+  // if (DAG->isTrackingPressure() && tryPressure(TryCand.RPDelta.CriticalMax,
+  //                                              Cand.RPDelta.CriticalMax,
+  //                                              TryCand, Cand, RegCritical, TRI,
+  //                                              DAG->MF))
+  //   return;
 
   // We only compare a subset of features when comparing nodes between
   // Top and Bottom boundary. Some properties are simply incomparable, in many
@@ -3271,6 +3293,18 @@ void GenericScheduler::tryCandidate(SchedCandidate &Cand,
     if (!RegionPolicy.DisableLatencyHeuristic && TryCand.Policy.ReduceLatency &&
         !Rem.IsAcyclicLatencyLimited && tryLatency(TryCand, Cand, *Zone))
       return;
+
+    if (Zone->isTop() && Cand.SU->getInstr() && TryCand.SU->getInstr() && Cand.SU->getInstr()->getOpcode() == TryCand.SU->getInstr()->getOpcode()) {
+      const float CandScheduleRank = getForwardScheduleRank(*Cand.SU);
+      const float TryCandScheduleRank = getForwardScheduleRank(*TryCand.SU);
+
+      if (CandScheduleRank < TryCandScheduleRank) {
+        TryCand.Reason = NodeOrder;
+        return;
+      } else if (TryCandScheduleRank < CandScheduleRank) {
+        return;
+      }
+    }
 
     // Fall through to original instruction order.
     if ((Zone->isTop() && TryCand.SU->NodeNum < Cand.SU->NodeNum)
